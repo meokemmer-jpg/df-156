@@ -1,0 +1,126 @@
+# DF-156 PVG-Phronesis-Pending-Aggregator [CRUX-MK]
+# Welle: 25 Domain: K_0+Q_0 (Martin-Phronesis-Backlog)
+
+df_id: DF-156
+df_name: pvg-phronesis-pending-aggregator
+welle: 25
+domain: K_0+Q_0
+status: SKELETON-CONDITIONAL
+crux-mk: true
+
+mission: |
+  Phronesis-Pending-Aggregator fuer Martin-Decisions. Aggregiert alle DF-Configs
+  mit pending_phronesis-Items + Decision-Cards-Wartezustaende.
+  NIEMALS Auto-Decision. NUR Visibility-Dashboard.
+
+k11_cascade_isolation: hard
+failure_blast_radius: 0
+dependency_dlq_strategy: "Read-only, kein DLQ"
+
+k12_distillation_resistenz:
+  output_feeds_into_training: false
+  provenance_required_in_output: true
+  non_llm_validation_layer: true
+  kemmer_names_filter_enabled: true
+
+k13_independent_ground_truth:
+  external_anchor_type: filesystem
+  external_anchor_validation_frequency: per_run
+  pre_action_domain_check: true
+  pre_action_backup_check: true
+  pre_action_blast_radius_check: true
+
+k14_human_override_decay:
+  override_complexity: single_command
+  override_documentation_freshness_days: 30
+  martin_review_cadence: weekly
+  bus_factor_handover_drilled: false
+
+k15_entropy_budget:
+  entropy_added_loc_estimate: 200
+  entropy_added_concepts: [Phronesis-Pending-Aggregation, Decision-Card-Wait-State, Priority-Tier]
+  entropy_justified_by_rho:
+    rho_low_eur_per_year: 8000
+    rho_high_eur_per_year: 50000
+    rho_confidence: PROVISIONAL
+
+k16_concurrent_spawn_protection: both
+lock_dir: /tmp/df-156.lock
+lock_stale_age_h: 6
+engine_pgrep_check: true
+lock_release_on: EXIT_INT_TERM
+
+lose_coupling:
+  LC1_graceful_degradation:
+    degradation_modes: [full, degraded_anchor, standalone]
+    degradation_test_required: true
+  LC2_direct_mode:
+    direct_mode_available: true
+    direct_mode_capability: 0.85
+    direct_mode_trigger: "DF_156_REAL_API_ENABLED=false"
+  LC3_circuit_breaker:
+    circuit_breaker_timeout_s: 30
+    circuit_breaker_open_threshold: 3
+    circuit_breaker_half_open_test_interval_s: 300
+  LC4_failure_isolation:
+    state_externalization: true
+    idempotent_operations: true
+    dependency_dlq_separate: false
+  LC5_health_check:
+    health_check_dependencies: []
+    health_check_degraded_score: 0.7
+    health_check_endpoint_or_file: branch-hub/state/df-156-health.json
+
+default_action:
+  description: "Mock-Mode: Phronesis-Pending-Dashboard, NIEMALS Auto-Decision"
+  rho_per_run_eur: 40
+  block_gates:
+    - gate_id: K13_PAV
+      block_reason: "K_0+Q_0 Anker-Check (Phronesis-Visibility)"
+      false_block_cost_eur: 5
+      legitimate_block_condition: "Env unverifiziert"
+  graceful_degradation_path: "Mock-Fallback"
+
+activation_gates:
+  DF_156_REAL_API_ENABLED:
+    default: false
+    requires_phronesis_ticket: true
+  DF_156_ENV:
+    default: dev
+
+q0_sperr_liste:
+  - id: Q0-1
+    rule: "Auto-Decision (statt Martin-Phronesis)"
+    enforcement: "KEINE Write-Permissions auf Decision-Cards"
+  - id: Q0-2
+    rule: "Decision-Empfehlungen produzieren"
+    enforcement: "Decision-Keyword-RegEx (Read-Only Aggregation)"
+  - id: Q0-3
+    rule: "L13-Phronesis ueberschreiben"
+    enforcement: "Eskalation an Martin via Phronesis-Trigger"
+
+rho_estimate:
+  annual_eur: 25000
+  reason: "Phronesis-Backlog-Visibility fuer Martin, Pareto-Engpass-Erkennung"
+  schwer_quantifizierbar: false
+
+migration_provenance:
+  source_welle: 25
+  pre_skeleton_engine_loc: 200
+  reference_pattern: df-108
+  skeleton_created: 2026-05-13
+
+trinity_compliance:
+  options_presented_in_spec: true
+  variants:
+    - conservative: "Mock-Mode default Read-Only"
+    - aggressive: "Real-API Phase-2 (Read-Only Aggregation)"
+    - contrarian: "Sunset wenn Phronesis-Pipeline durch externes Tool ersetzt"
+
+crux_bindung:
+  K_0: "Martin-Phronesis-Bandbreite optimiert"
+  Q_0: "Pareto-Engpass-Erkennung bei Phronesis-Decisions"
+  I_min: "K11-K16 + LC1-LC5"
+  W_0: "Manuelle Phronesis-Backlog-Sichtung eingespart"
+
+# [CRUX-MK]
