@@ -1,3 +1,37 @@
+
+# K16: Concurrent-Spawn-Mutex (fcntl-based, Trinity-CONSERVATIVE 2026-05-17)
+def k16_lock_or_exit(df_name: str):
+    """Acquire exclusive lock or exit(3). Prevents concurrent DF runs."""
+    import fcntl, os, sys
+    lock_path = f"/tmp/df-trinity-{df_name}.lock"
+    fd = os.open(lock_path, os.O_CREAT | os.O_WRONLY)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return fd
+    except BlockingIOError:
+        sys.exit(3)
+
+
+# K13: External-Anchor-Mock-RFC3161 (Trinity-CONSERVATIVE 2026-05-17)
+def k13_anchor(payload_hash: str) -> dict:
+    """Mock RFC3161-style timestamp anchor."""
+    from datetime import datetime, timezone
+    return {
+        "anchor_type": "rfc3161-mock",
+        "iso_ts": datetime.now(timezone.utc).isoformat(),
+        "payload_hash": payload_hash,
+    }
+
+
+# K12: HMAC-SHA256-Provenance (Trinity-CONSERVATIVE 2026-05-17)
+def k12_provenance(payload: bytes, key: bytes = b"df-trinity-conservative-v1") -> dict:
+    """Returns payload_hash + HMAC-SHA256 signature."""
+    import hashlib, hmac
+    return {
+        "payload_hash": hashlib.sha256(payload).hexdigest(),
+        "hmac_sha256": hmac.new(key, payload, hashlib.sha256).hexdigest(),
+    }
+
 """PVG-Phronesis-Pending-Aggregator DF-156 engine."""
 
 import re
