@@ -1,0 +1,18 @@
+{
+  "df-156": {
+    "average_age_days": 0,
+    "df": "DF-156",
+    "iso_timestamp": "2026-06-08T19:57:11+00:00",
+    "oldest_pending": [],
+    "pending_items_total": 0,
+    "pending_per_domain": {},
+    "source": "mock",
+    "urgent_pending": [],
+    "welle": "25"
+  },
+  "k17_pav": {
+    "env_tag": "local",
+    "missing_anchors": [],
+    "ok": true
+  }
+}
