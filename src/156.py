@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -13,23 +14,20 @@ class PendingItem:
     item_id: str
     title: str
     kind: str
-    wait_state: bool
     priority_tier: str
+    wait_state: bool
     blocked_by: tuple[str, ...]
 
 
-def classify_priority_tier(raw_priority: Any) -> str:
-    value = str(raw_priority or "").strip().lower()
-    if value in {"critical", "p0", "tier-0", "t0"}:
-        return "tier-0"
-    if value in {"high", "p1", "tier-1", "t1"}:
-        return "tier-1"
-    if value in {"medium", "p2", "tier-2", "t2"}:
-        return "tier-2"
-    return "tier-3"
+def classify_priority_tier(priority_score: int) -> str:
+    if priority_score >= 80:
+        return "T1"
+    if priority_score >= 50:
+        return "T2"
+    return "T3"
 
 
-def normalize_pending_items(configs: Iterable[dict[str, Any]]) -> list[PendingItem]:
+def _normalize_pending_items(configs: Iterable[dict[str, Any]]) -> list[PendingItem]:
     items: list[PendingItem] = []
 
     for config in configs:
@@ -40,11 +38,11 @@ def normalize_pending_items(configs: Iterable[dict[str, Any]]) -> list[PendingIt
                 PendingItem(
                     source=source,
                     item_id=str(raw["id"]),
-                    title=str(raw.get("title", "")),
-                    kind="pending-phronesis",
+                    title=str(raw["title"]),
+                    kind="pending_phronesis",
+                    priority_tier=classify_priority_tier(int(raw.get("priority_score", 0))),
                     wait_state=bool(raw.get("wait_state", True)),
-                    priority_tier=classify_priority_tier(raw.get("priority")),
-                    blocked_by=tuple(str(x) for x in raw.get("blocked_by", [])),
+                    blocked_by=tuple(str(x) for x in raw.get("blocked_by", ())),
                 )
             )
 
@@ -55,60 +53,44 @@ def normalize_pending_items(configs: Iterable[dict[str, Any]]) -> list[PendingIt
                 PendingItem(
                     source=source,
                     item_id=str(raw["id"]),
-                    title=str(raw.get("title", "")),
-                    kind="decision-card",
+                    title=str(raw["title"]),
+                    kind="decision_card",
+                    priority_tier=classify_priority_tier(int(raw.get("priority_score", 0))),
                     wait_state=True,
-                    priority_tier=classify_priority_tier(raw.get("priority")),
-                    blocked_by=tuple(str(x) for x in raw.get("blocked_by", [])),
+                    blocked_by=tuple(str(x) for x in raw.get("blocked_by", ())),
                 )
             )
 
     return items
 
 
-def detect_pareto_bottlenecks(items: Iterable[PendingItem]) -> list[dict[str, Any]]:
-    counts: dict[str, int] = {}
+def aggregate_pending_visibility(configs: Iterable[dict[str, Any]]) -> dict[str, Any]:
+    items = _normalize_pending_items(configs)
+
+    tier_counts = Counter(item.priority_tier for item in items)
+    blocker_counts: dict[str, int] = defaultdict(int)
     for item in items:
         for blocker in item.blocked_by:
-            counts[blocker] = counts.get(blocker, 0) + 1
+            blocker_counts[blocker] += 1
 
-    ranked = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
-    total = sum(counts.values())
-
-    bottlenecks: list[dict[str, Any]] = []
-    running = 0
-    for blocker, count in ranked:
-        running += count
-        share = 0.0 if total == 0 else count / total
-        cumulative_share = 0.0 if total == 0 else running / total
-        bottlenecks.append(
-            {
-                "blocker": blocker,
-                "count": count,
-                "share": round(share, 4),
-                "cumulative_share": round(cumulative_share, 4),
-                "pareto_front": cumulative_share <= 0.8 or len(bottlenecks) == 0,
-            }
-        )
-    return bottlenecks
-
-
-def aggregate_pending_dashboard(configs: Iterable[dict[str, Any]]) -> dict[str, Any]:
-    items = normalize_pending_items(configs)
-
-    by_priority = {"tier-0": 0, "tier-1": 0, "tier-2": 0, "tier-3": 0}
-    for item in items:
-        by_priority[item.priority_tier] += 1
+    pareto_blockers = sorted(
+        (
+            {"blocker": blocker, "count": count}
+            for blocker, count in blocker_counts.items()
+        ),
+        key=lambda x: (-x["count"], x["blocker"]),
+    )
 
     return {
-        "date": date.today().isoformat(),
-        "mission": "DF-156 PVG-Phronesis-Pending-Aggregator",
         "auto_decision": False,
-        "visibility_only": True,
         "summary": {
             "total_pending_items": len(items),
             "wait_state_items": sum(1 for item in items if item.wait_state),
-            "by_priority_tier": by_priority,
+            "by_priority_tier": {
+                "T1": tier_counts.get("T1", 0),
+                "T2": tier_counts.get("T2", 0),
+                "T3": tier_counts.get("T3", 0),
+            },
         },
         "items": [
             {
@@ -116,21 +98,40 @@ def aggregate_pending_dashboard(configs: Iterable[dict[str, Any]]) -> dict[str, 
                 "id": item.item_id,
                 "title": item.title,
                 "kind": item.kind,
-                "wait_state": item.wait_state,
                 "priority_tier": item.priority_tier,
+                "wait_state": item.wait_state,
                 "blocked_by": list(item.blocked_by),
             }
             for item in items
         ],
-        "pareto_bottlenecks": detect_pareto_bottlenecks(items),
+        "pareto_engpass": pareto_blockers,
     }
 
 
-def write_report(configs: Iterable[dict[str, Any]], reports_dir: str | Path = "reports") -> Path:
-    report = aggregate_pending_dashboard(configs)
-    reports_path = Path(reports_dir)
-    reports_path.mkdir(parents=True, exist_ok=True)
-    output_path = reports_path / f"df-156-{report['date']}.json"
+def build_report(configs: Iterable[dict[str, Any]], report_date: date | None = None) -> dict[str, Any]:
+    report_date = report_date or date.today()
+    report = aggregate_pending_visibility(configs)
+    report["report_date"] = report_date.isoformat()
+    return report
+
+
+def write_report(
+    configs: Iterable[dict[str, Any]],
+    output_dir: str | Path = "reports",
+    report_date: date | None = None,
+) -> Path:
+    report = build_report(configs, report_date=report_date)
+    output_path = Path(output_dir) / f"df-156-{report['report_date']}.json"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
     return output_path
+
+
+__all__ = [
+    "PendingItem",
+    "aggregate_pending_visibility",
+    "build_report",
+    "classify_priority_tier",
+    "write_report",
+]
 # [CRUX-MK]
