@@ -124,3 +124,11 @@ crux_bindung:
   W_0: "Manuelle Phronesis-Backlog-Sichtung eingespart"
 
 # [CRUX-MK]
+
+# --- K11-16 Board-Haertung (evidence-based, df_k_hardening) [CRUX-MK] ---
+K11_cascade_containment: lose_coupling  # evidence: lose_coupling-Block (LC1-5 Failure-Isolation)
+K15_entropy_budget: bounded  # evidence: Output/Quota-Cap deklariert
+K16_concurrent_spawn_mutex: wrapper_mkdir  # evidence: scripts/*.sh atomarer mkdir-Lock (Spawn-Mutex)
+K_hardening_gap: [distillation_resistance, independent_ground_truth, human_override_decay]  # echte Luecke -> Code noetig
+K_hardening_level: declared  # 3/6 evidenz-belegt
+K_hardening_ts: 2026-06-23T04:26:38.601009+00:00
