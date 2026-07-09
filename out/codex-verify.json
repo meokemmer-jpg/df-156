@@ -1,0 +1,5 @@
+{
+  "verdict": "HOLDS",
+  "reason": "Der Test nutzt echte Eingabekonfigurationen mit Gegenfall state='done' und prüft, dass dieser anders behandelt bzw. ausgeschlossen wird sowie echte Aggregation, Priorisierung, Pareto-Sortierung und Datei-Ausgabe entstehen.",
+  "ts": "2026-07-08T15:07:25.787902+00:00"
+}
