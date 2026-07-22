@@ -1,9 +1,10 @@
 {
   "df": "df-156",
-  "ts": "2026-07-20T03:55:32.932063+00:00",
+  "ts": "2026-07-21T03:55:54.919345+00:00",
   "maturity": "TESTED",
   "maturity_level": 4,
-  "evidence_grade": 4,
+  "evidence_grade": 3,
+  "grade_basis": "pytest-gruen + HOLDS-verifiziert, 0 externe Belege (consumed-Quittung/Real-Receipt) -> max Grade-3",
   "wargame_verdict": "CONDITIONAL",
   "crux": "[CRUX-MK]"
 }
